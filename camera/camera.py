@@ -3,12 +3,16 @@ import torch
 import speech_recognition as sr
 import pyttsx3 
 from flask import Flask, render_template, request, flash, redirect, url_for, session, jsonify
+#import convex
+from PIL import Image as im 
+
+import google.generativeai as genai
+import os
+
+genai.configure(api_key="AIzaSyA6PgnXOvsx0lK2RpuWkdoyah-Xp6R61z8")
 
 
 app = Flask(__name__)
-
-# Load YOLOv5 pre-trained model
-model = torch.hub.load('ultralytics/yolov5', 'yolov5s')  # Load YOLOv5 model
 r = sr.Recognizer() 
 
 
@@ -39,64 +43,57 @@ def camera():
         # Release the camera
         cap.release()
 
-        # Process the image with the model
-        results = model(frame)
+        img = im.fromarray(frame) 
 
-        # Extract labels from the results
-        print(results.names)
-        
-        
-        return jsonify(results.names[0])
-    
+        model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+        lan1 = request.args.get('original')
+        lan2 = request.args.get('new')
+        prompt = "Classify the objects that are in this photo into a list in english and in spanish, return a JSON object"
+        response = model.generate_content([prompt, img])
+        print(response.text)
 
-@app.route('/test', methods = ['GET'])
-def thing():
+        return response.text
 
-    if request.method == 'GET':
-        while(1):    
-     
-            # Exception handling to handle
-            # exceptions at the runtime
-            try:
+@app.route('/translate/<list1>/<list2>/<object>')
+def translate(list1, list2):
+
+    while(1):    
+        try:
+            with sr.Microphone() as source2:
                 
-                # use the microphone as source for input.
-                with sr.Microphone() as source2:
-                    
-                    # wait for a second to let the recognizer
-                    # adjust the energy threshold based on
-                    # the surrounding noise level 
-                    r.adjust_for_ambient_noise(source2, duration=0.1)
-                    
-                    #listens for the user's input 
-                    audio2 = r.listen(source2)
-                    
-                    # Using google to recognize audio
-                    MyText = r.recognize_google(audio2)
-                    MyText = MyText.lower()
-        
-                    print("Did you say ",MyText)
-                    #SpeakText(MyText) For audio to text
-                    if MyText == 'camera':
-                        return redirect(url_for('camera'))
-                    
+                r.adjust_for_ambient_noise(source2, duration=0.1)
+                
+                #listens for the user's input 
+                audio2 = r.listen(source2)
+                
+                # Using google to recognize audio
+                MyText = r.recognize_google(audio2)
+                MyText = MyText.lower()
+    
+                print("Did you say ",MyText)
+                #SpeakText(MyText) For audio to text
+                
+                if MyText in list1:
+                    object1 = list1[list1.index(MyText)]
+                    object2 = list2[list2.index(MyText)]
+
+                    result = {
+                        'native': 'English',
+                        'original': object1,
+                        'translated': object2,
+                        'foreign': 'Spanish',
+                        'context': ''
+                    }
+                    break
+        except sr.RequestError as e:
+            print("Could not request results; {0}".format(e))
             
-                    
+        except sr.UnknownValueError:
+            print("unknown error occurred")
+
+    return result
 
 
-                    
-            except sr.RequestError as e:
-                print("Could not request results; {0}".format(e))
-                
-            except sr.UnknownValueError:
-                print("unknown error occurred")
-
-        print("Left the loop\n")
-        #run the voice detection
-        
-
-
-    
-# Release the webcam and close windows
 
 @app.route('/voice', methods = ['GET'])
 def voiceRec():
