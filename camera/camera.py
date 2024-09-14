@@ -48,11 +48,23 @@ def camera():
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
         lan1 = request.args.get('original')
         lan2 = request.args.get('new')
-        prompt = "Classify the objects that are in this photo into a list in english and in spanish, return a JSON object"
-        response = model.generate_content([prompt, img])
-        print(response.text)
 
-        return response.text
+        
+        # prompt = """ Classify the objects in the photo into an english list and a spanish list in following JSON format.
+
+        # Translation_Objects = {'english': list[str], 'spanish': list[str]}
+        # """
+        
+        prompt1 = """Classify the objects in the photo into a list seperated by ','"""
+        prompt2 = """Classify the objects in the photo in spanish into a list seperated by ','"""
+        response1 = model.generate_content([prompt1, img])
+        response2 = model.generate_content([prompt2, img])
+        list1 = response1.text.split(", ")
+        list2 = response2.text.split(", ")
+
+        translation = {'English': list1, 'Spanish': list2}
+
+        return jsonify(translation)
 
 @app.route('/translate/<list1>/<list2>/<object>')
 def translate(list1, list2):
@@ -97,6 +109,7 @@ def translate(list1, list2):
 
 @app.route('/voice', methods = ['GET'])
 def voiceRec():
+    #Example Querry: how do you 
 
 
 
