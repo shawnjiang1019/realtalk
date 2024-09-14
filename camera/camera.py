@@ -2,7 +2,7 @@ import cv2
 import torch
 import speech_recognition as sr
 import pyttsx3 
-from flask import Flask, render_template, request, flash, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, flash, redirect, url_for, session, jsonify, Response
 from io import BytesIO
 import base64
 #import convex
@@ -25,7 +25,25 @@ r = sr.Recognizer()
 
 #have script running on a different endpoint, once the keyword is spoken redirt to the camera end point
 #as a post request and return labels
+def generate_frames():
+    camera = cv2.VideoCapture(0)
+    while True:
+        success, frame = camera.read()  # Capture frame-by-frame
+        if not success:
+            break
+        else:
+            # Encode the frame in JPEG format
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
 
+            # Yield the frame in a HTTP response
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+@app.route('/video_feed')
+def video_feed():
+    """Video streaming route. Put this in the src attribute of an img tag"""
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/camera', methods=['GET', 'POST'])
 def camera():

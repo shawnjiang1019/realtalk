@@ -8,5 +8,6 @@
 <body>
     <h1>Classification: {{ classification }}</h1>
     <img src="data:image/png;base64,{{ image }}" alt="Classified Image">
+    <img src="{{ url_for('video_feed') }}" width="720" height="480" />
 </body>
 </html>
