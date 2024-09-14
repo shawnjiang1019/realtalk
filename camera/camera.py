@@ -48,6 +48,9 @@ def action():
                 
                 if MyText == 'capture':
                     return redirect(url_for('camera'))
+                
+                if MyText == 'retrieval':
+                    return redirect(url_for('retrieval'))
         except sr.RequestError as e:
             print("Could not request results; {0}".format(e))
             
