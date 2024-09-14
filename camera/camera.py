@@ -3,17 +3,21 @@ import torch
 import speech_recognition as sr
 import pyttsx3 
 from flask import Flask, render_template, request, flash, redirect, url_for, session, jsonify
-#import convex
+from convex import ConvexClient
 from PIL import Image as im 
+import cohere
+
+
 
 import google.generativeai as genai
 import os
 
 genai.configure(api_key="AIzaSyA6PgnXOvsx0lK2RpuWkdoyah-Xp6R61z8")
-
+co = cohere.Client(api_key="FF6yLnIcFESrqvE1vKvOmvfTdugIWS15oLcvR2Fo")
+client = ConvexClient('https://adept-lyrebird-670.convex.cloud/ ')
 
 app = Flask(__name__)
-r = sr.Recognizer() 
+
 
 
 
@@ -22,6 +26,35 @@ r = sr.Recognizer()
 
 #have script running on a different endpoint, once the keyword is spoken redirt to the camera end point
 #as a post request and return labels
+
+@app.route('/decision1', methods=['GET', 'POST'])
+
+def action():
+    r = sr.Recognizer() 
+    while(1):    
+        try:
+            with sr.Microphone() as source2:
+                
+                r.adjust_for_ambient_noise(source2, duration=0.1)
+                
+                audio2 = r.listen(source2)
+                
+                # Using google to recognize audio
+                MyText = r.recognize_google(audio2)
+                MyText = MyText.lower()
+    
+                print("Did you say ",MyText)
+                #SpeakText(MyText) For audio to text
+                
+                if MyText == 'capture':
+                    return redirect(url_for('camera'))
+        except sr.RequestError as e:
+            print("Could not request results; {0}".format(e))
+            
+        except sr.UnknownValueError:
+            print("unknown error occurred")
+
+    
 
 
 @app.route('/camera', methods=['GET', 'POST'])
@@ -63,8 +96,43 @@ def camera():
         list2 = response2.text.split(", ")
 
         translation = {'English': list1, 'Spanish': list2}
+        #print(client.query("desk:get"))
+
+        #ADD TO DATABASE
+        response = client.query("insert_into_table", {
+            "table_name": "flashcards",  # replace with your table name
+            "document": translation
+        })
 
         return jsonify(translation)
+    
+
+@app.route('/do', methods=['GET', 'POST'])
+def getStuff():
+    if request.method == 'GET':
+        print("this works")
+        thing = client.query("flashcards:get")
+        print(thing)
+        return thing
+    else:
+        print('POST REQUEST')
+
+
+@app.route('/retrieve', methods= ['GET', "POST"])
+
+def retrieve(prompt):
+    query = prompt
+    cards = client.query("flashcards:get")
+
+    results = co.rerank(model="rerank-multilingual-v3.0", query=query, documents=cards, rank_fields=['answer','question'],top_n=5, return_documents=True)
+
+
+
+    
+    pass
+
+
+
 
 @app.route('/translate/<list1>/<list2>/<object>')
 def translate(list1, list2):
@@ -123,6 +191,9 @@ def SpeakText(command):
     engine = pyttsx3.init()
     engine.say(command) 
     engine.runAndWait()
+
+
+
 
 if __name__ == "__main__":
   app.run(debug=True)
