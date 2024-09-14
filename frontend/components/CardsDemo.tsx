@@ -18,13 +18,13 @@ const data = [
 		category: 'Learn New Languages',
 		title: 'Learn words and phrases tailored to your experiences',
 		src: 'https://images.unsplash.com/photo-1604882737321-e6937fd6f519?q=80&w=2574&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-		content: 'Learn new languages more efficiently with AI-generated flashcards. With our revelutionary bucket hat, learning new languages will be faster than ever, adapting to your daily-interactions.', // BUCKET HAT????
+		content: 'Use terms from your life to revise. Learn more efficiently, focusing only on words that you need to use the most. ', // BUCKET HAT????
 	},
 	{
 		category: 'AI-Powered Flashcards',
 		title: 'Generate Flashcards with AI and daily-life',
 		src: 'https://images.unsplash.com/photo-1639004643579-7286ae5a771d?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-		content: 'Learn new languages more efficiently with AI-generated flashcards. With our revelutionary bucket hat, learning new languages will be faster than ever, adapting to your daily-interactions.', // BUCKET HAT????
+		content: 'Learn new languages more efficiently with AI-generated flashcards. With our revelutionary bucket hat, learning new languages will be faster than ever by using words from your daily-interactions.', // BUCKET HAT????
 	},
 	// {
 	// 	category: 'Import',
@@ -63,6 +63,6 @@ const data = [
 		category: 'Review',
 		title: 'Review Your Flashcards',
 		src: 'https://images.unsplash.com/photo-1593698054469-2bb6fdf4b512?q=80&w=2574&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-		content: 'Viiew all of your flashcards. Review them to build your memory and reinforce your learning. ',
+		content: 'View all of your flashcards. Review them to build your memory and reinforce your learning. ',
 	},
 ];
