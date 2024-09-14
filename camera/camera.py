@@ -3,11 +3,14 @@ import torch
 import speech_recognition as sr
 import pyttsx3 
 from flask import Flask, render_template, request, flash, redirect, url_for, session, jsonify
+from io import BytesIO
+import base64
 #import convex
 from PIL import Image as im 
 
 import google.generativeai as genai
 import os
+import subprocess
 
 genai.configure(api_key="AIzaSyA6PgnXOvsx0lK2RpuWkdoyah-Xp6R61z8")
 
@@ -42,19 +45,25 @@ def camera():
 
         # Release the camera
         cap.release()
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = im.fromarray(frame_rgb) 
 
-        img = im.fromarray(frame) 
+        buffer = BytesIO()
+        img.save(buffer, format="JPEG")
+        img_bytes = buffer.getvalue()
+        img_base64 = base64.b64encode(img_bytes).decode('utf-8')
 
+        # Generate content using the model
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
         lan1 = request.args.get('original')
         lan2 = request.args.get('new')
-
-        
-        # prompt = """ Classify the objects in the photo into an english list and a spanish list in following JSON format.
+        # prompt = "Classify the objects that are in this photo into a list in english and in spanish, return a JSON object"
+        # response = model.generate_content([prompt, img])
+        # print(response.text)
+                # prompt = """ Classify the objects in the photo into an english list and a spanish list in following JSON format.
 
         # Translation_Objects = {'english': list[str], 'spanish': list[str]}
         # """
-        
         prompt1 = """Classify the objects in the photo into a list seperated by ','"""
         prompt2 = """Classify the objects in the photo in spanish into a list seperated by ','"""
         response1 = model.generate_content([prompt1, img])
@@ -64,7 +73,8 @@ def camera():
 
         translation = {'English': list1, 'Spanish': list2}
 
-        return jsonify(translation)
+        # return response.text
+        return render_template('camera.html', classification=translation, image=img_base64)
 
 @app.route('/translate/<list1>/<list2>/<object>')
 def translate(list1, list2):
@@ -117,12 +127,14 @@ def voiceRec():
     return
 
 
-def SpeakText(command):
-     
+def SpeakText(command, speed=150, voice="samantha"):
+    voices = ['fred', 'junior', 'kathy', 'ralph', 'samantha']
     # Initialize the engine
-    engine = pyttsx3.init()
-    engine.say(command) 
-    engine.runAndWait()
+    # engine = pyttsx3.init(driverName='espeak')
+
+    # engine.say(command)
+    # engine.runAndWait()
+    subprocess.run(['say', '-v', voice, '-r', str(speed), command])
 
 if __name__ == "__main__":
   app.run(debug=True)
