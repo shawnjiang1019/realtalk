@@ -31,7 +31,7 @@ app = Flask(__name__)
 
 def action():
     r = sr.Recognizer() 
-    while(1):    
+    while(1):
         try:
             with sr.Microphone() as source2:
                 
@@ -45,12 +45,20 @@ def action():
     
                 print("Did you say ",MyText)
                 #SpeakText(MyText) For audio to text
-                
-                if MyText == 'capture':
-                    return redirect(url_for('camera'))
-                
-                if MyText == 'retrieval':
-                    return redirect(url_for('retrieval'))
+                if MyText == 'hey real talk':
+                    userResponse = r.recognize_google(audio2)
+                    userResponse = userResponse.lower()
+                    if 'translate' in userResponse:
+                        model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+                        prompt1 = "Give me a 'yes' or 'no' response as to whether or not the text wants to translate something"
+                    
+                    
+                        response1 = model.generate_content([prompt1])
+                        if response1 == 'yes': 
+                            prompt2 = "Give me the two letter iso code for the language to translate to"
+                            response2 = model.generate_content([prompt2])
+                            return redirect(url_for('camera', response2))
+                    
         except sr.RequestError as e:
             print("Could not request results; {0}".format(e))
             
@@ -63,6 +71,7 @@ def action():
 @app.route('/camera', methods=['GET', 'POST'])
 def camera():
     if request.method == 'GET':
+        language = request.args.response2
         # Open the camera
         cap = cv2.VideoCapture(0)
 
@@ -85,29 +94,24 @@ def camera():
         lan1 = request.args.get('original')
         lan2 = request.args.get('new')
 
-        
-        # prompt = """ Classify the objects in the photo into an english list and a spanish list in following JSON format.
-
-        # Translation_Objects = {'english': list[str], 'spanish': list[str]}
-        # """
-        
         prompt1 = """Classify the objects in the photo into a list seperated by ','"""
-        prompt2 = """Classify the objects in the photo in spanish into a list seperated by ','"""
+        prompt2 = """Classify the objects in the photo in {} into a list seperated by ','""".format(language)
         response1 = model.generate_content([prompt1, img])
         response2 = model.generate_content([prompt2, img])
         list1 = response1.text.split(", ")
         list2 = response2.text.split(", ")
 
-        translation = {'English': list1, 'Spanish': list2}
+        translation = {'English': list1, language: list2}
         #print(client.query("desk:get"))
 
         #ADD TO DATABASE
-        response = client.query("insert_into_table", {
-            "table_name": "flashcards",  # replace with your table name
-            "document": translation
-        })
+        # response = client.query("insert_into_table", {
+        #     "table_name": "flashcards",  # replace with your table name
+        #     "document": translation
+        # })
+        
+        return redirect(location=url_for('translate', lang1 = list1, lang2 = list2))
 
-        return jsonify(translation)
     
 
 @app.route('/do', methods=['GET', 'POST'])
@@ -137,9 +141,11 @@ def retrieve(prompt):
 
 
 
-@app.route('/translate/<list1>/<list2>/<object>')
-def translate(list1, list2):
-
+@app.route('/translate')
+def translate():
+    list1 = request.args.lang1
+    list2 = request.args.lang2
+    r = sr.Recognizer() 
     while(1):    
         try:
             with sr.Microphone() as source2:
