@@ -51,7 +51,7 @@ const data = [
 		title: 'Organize Flashcards by groups',
 		src: 'https://images.unsplash.com/photo-1504386106331-3e4e71712b38?q=80&w=2333&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
 		content:
-			'Organize your learning by sorting your experiences by topics. Whether by food, objects, or even philosophy, RealTalk sorts all your experiences for you.',
+			'RealTalk organizes your learning by sorting your experiences by topics. Whether by food, objects, or even philosophy, RealTalk can do it all for you.',
 	},
 	{
 		category: 'Review',
