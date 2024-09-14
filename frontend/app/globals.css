@@ -4,7 +4,7 @@
 
 :root {
 	--background: #ffffff;
-	--foreground: #ededed;
+	--foreground: #171717;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -89,4 +89,14 @@ body {
 	body {
 		@apply bg-background text-foreground;
 	}
+	.fr {
+		@apply flex flex-row justify-center items-center;
+	}
+	.fc {
+		@apply flex flex-col justify-center items-center;
+	}
+}
+
+.FlashcardArrayWrapper__controls button > svg > path {
+	fill: white;
 }

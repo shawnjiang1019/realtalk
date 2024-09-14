@@ -15,6 +15,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as deck from "../deck.js";
 import type * as flashcards from "../flashcards.js";
 
 /**
@@ -26,6 +27,7 @@ import type * as flashcards from "../flashcards.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  deck: typeof deck;
   flashcards: typeof flashcards;
 }>;
 export declare const api: FilterApi<
