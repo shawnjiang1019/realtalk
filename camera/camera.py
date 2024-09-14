@@ -26,7 +26,7 @@ r = sr.Recognizer()
 #have script running on a different endpoint, once the keyword is spoken redirt to the camera end point
 #as a post request and return labels
 def generate_frames():
-    camera = cv2.VideoCapture(0)
+    camera = cv2.VideoCapture(1)
     while True:
         success, frame = camera.read()  # Capture frame-by-frame
         if not success:
@@ -49,7 +49,7 @@ def video_feed():
 def camera():
     if request.method == 'GET':
         # Open the camera
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(1)
 
         if not cap.isOpened():
             return jsonify({"error": "Could not open camera."}), 500
@@ -83,13 +83,17 @@ def camera():
         # Translation_Objects = {'english': list[str], 'spanish': list[str]}
         # """
         prompt1 = """Classify the objects in the photo into a list seperated by ','"""
-        prompt2 = """Classify the objects in the photo in spanish into a list seperated by ','"""
+        prompt2 = """Classify the objects in the photo in spanish into a list seperated by ',' and remove duplicates."""
         response1 = model.generate_content([prompt1, img])
         response2 = model.generate_content([prompt2, img])
         list1 = response1.text.split(", ")
         list2 = response2.text.split(", ")
+        rmdp1 = list(dict.fromkeys(list1))
+        rmdp2 = list(dict.fromkeys(list2))
+        print(rmdp1)
+        print(rmdp2)
 
-        translation = {'English': list1, 'Spanish': list2}
+        translation = {'English': rmdp1, 'Spanish': rmdp2}
 
         # return response.text
         return render_template('camera.html', classification=translation, image=img_base64)
