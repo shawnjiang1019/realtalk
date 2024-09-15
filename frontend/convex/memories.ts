@@ -1,4 +1,4 @@
-import { query } from './_generated/server';
+import { query, mutation } from './_generated/server';
 import { v } from 'convex/values';
 
 export const get = query({
@@ -18,3 +18,11 @@ export const getByDeckId = query({
 		return flashcards;
 	},
 });
+
+export const insert = mutation({
+    args: { native: v.string(), foreign: v.string(), transcript: v.string(), lang_from: v.string(), lang_to: v.string() },
+    handler: async (ctx, args) => {
+      const memory = await ctx.db.insert("memories", args);
+      return memory;
+    },
+})
