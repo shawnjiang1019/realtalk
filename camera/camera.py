@@ -37,6 +37,13 @@ app = Flask(__name__)
 @app.route('/decision1', methods=['GET', 'POST'])
 
 def action():
+    repeat = request.args.get('repeat')
+    if repeat is None:
+        repeat = "no"
+
+    if repeat == "yes":
+        PlayFile("anything_else.mp3")
+
     r = sr.Recognizer() 
     while(1):    
         try:
@@ -52,7 +59,9 @@ def action():
     
                 print("Did you say ",MyText)
                 #SpeakText(MyText) For audio to text
-                if 'hey real talk' in MyText:
+                # cases
+                
+                if any(phrase in MyText for phrase in ['ariel talk', 'hey real talk', 'real talk']) or repeat == "yes":
                     PlayFile("greeting.mp3")
                     
                     r.adjust_for_ambient_noise(source2, duration=0.1)
@@ -60,18 +69,26 @@ def action():
 
                     MyText = r.recognize_google(audio2)
                     MyText = MyText.lower()
-                    if 'translate' in MyText:
-                        print('We are in the if statement')
-                        model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-                        prompt1 = "Give me a 'yes' or 'no' response as to whether or not the text wants to translate something. GIVE ME ONLY A YES OR NO RESPONSE"
-                    
-                        response1 = model.generate_content([prompt1, MyText])
+                    if 'translate' in MyText:                    
+                        response1 = co.chat(message="Give me a 'yes' or 'no' response as to whether or not the text wants to translate something. GIVE ME ONLY A YES OR NO RESPONSE: " + MyText)
                         print(response1.text)
+
                         if 'y' in response1.text.lower():
                             PlayFile("translate.mp3")
-                            prompt2 = "Give me the two letter iso code for the language to translate to only return 2 characters that are the iso code, NOTHING ELSE, NO MARKDOWN"
-                            response2 = model.generate_content([prompt2, MyText])
+                            response2 = co.chat(message="Give me the two letter iso code for the language to translate to only return 2 characters that are the iso code, NOTHING ELSE, NO MARKDOWN: " + MyText)
+                            print(response2.text)
                             return redirect(url_for('camera', response2=response2.text))
+                    elif 'recall' in MyText:
+                        # retrieve()
+                        return redirect(url_for('retrieve', text = MyText))
+                    else:
+                    
+                        dialogue=co.chat(message=f"Behave as a voice assistant that is in the middle of a conversation. Do not greet the user, here's what they said: {MyText}", model="command")
+                        print(dialogue.text)
+                        SpeakText(dialogue.text)
+                        PlayFile('output.mp3')
+
+                    
                     
         except sr.RequestError as e:
             print("Could not request results; {0}".format(e))
@@ -91,7 +108,7 @@ def camera():
         language = language.replace(" ", "")
 
         # Open the camera
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(1)
 
         if not cap.isOpened():
             return jsonify({"error": "Could not open camera."}), 500
@@ -112,8 +129,6 @@ def camera():
 
         # Generate content using the model
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-        lan1 = request.args.get('original')
-        lan2 = request.args.get('new')
         # prompt = "Classify the objects that are in this photo into a list in english and in spanish, return a JSON object"
         # response = model.generate_content([prompt, img])
         # print(response.text)
@@ -167,37 +182,36 @@ def getStuff():
 
 @app.route('/retrieve', methods= ['GET', "POST"])
 
-def retrieve(prompt):
-    r = sr.Recognizer() 
-    while(1):    
-        try:
-            with sr.Microphone() as source2:
-                
-                r.adjust_for_ambient_noise(source2, duration=0.1)
-                
-                audio2 = r.listen(source2)
-                
-                # Using google to recognize audio
-                MyText = r.recognize_google(audio2)
-                MyText = MyText.lower()
-                if 'Help me recall' in MyText: 
-                    docs = client.query("memories:get")
-                    query = MyText
-                    results = co.rerank(model="rerank-multilingual-v3.0", query=query, documents=docs, top_n=3, return_documents=True)
-                    
-        except:
-            pass
+def retrieve():
+    text = request.args.get('text')
 
 
+    docs = client.query("memories:get")
+    query = text
+    print(docs)
+    # from docs create a sentence
+
+    query = query.replace("recall", "")
+    results = co.rerank(model="rerank-multilingual-v3.0",rank_fields=['foreign', 'lang_from', 'native', 'lang_to', 'transcript'], query=query, documents=docs, top_n=3, return_documents=True)
+    most_relevant = results.results[0]
+    print(most_relevant.document)
+
+    # get date from _created_at in most_relevant.document its a ms timestamp
+    date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(most_relevant.document._creationTime/1000))
+    today = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+    print(date)
+
+    # get the translation from most_relevant.document['foreign']
+
+    # With cohere, explain when the word was translated, and the translation
+    p = f"The word was translated on {date}, right now is {today} and the translation was from {most_relevant.document.lang_from} to {most_relevant.document.lang_to} and the translation was {most_relevant.document.native} which translates to {most_relevant.document.foreign}"
+    print(p)
+    dialogue = co.chat(message=p, preamble="Behave as a voice assistant that is in the middle of a conversation. Do not greet the user. Compare the given dates, if its the same date compare time. Here's what they said: " + text)
+    print(dialogue.text)
+    SpeakText(dialogue.text)
+    PlayFile('output.mp3')
     
-    cards = client.query("flashcards:get")
-
-    results = co.rerank(model="rerank-multilingual-v3.0", query=query, documents=cards, rank_fields=['answer','question'],top_n=5, return_documents=True)
-
-
-
-    
-    pass
+    return results
 
 
 
@@ -217,11 +231,11 @@ def translate():
             with sr.Microphone() as source2:
                 
                 r.adjust_for_ambient_noise(source2, duration=0.1)
-                model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-                dialogue= model.generate_content([f"Behave as a voice assistant that is in the middle of a conversation. Do not greet the user, and using the following python list {list1} generate a response that will list the items briefly and prompt the user to select one"]) 
+
+                dialogue= co.chat(message=f"Behave as a voice assistant that is in the middle of a conversation. Do not greet the user, and using the following python list {list1} generate a response that will list the items briefly and prompt the user to select one")
                 
                 SpeakText(dialogue.text)
-                PlayFile('C:/Users/shawn/Documents/realtalk/camera/output.mp3')
+                PlayFile('output.mp3')
                 #listens for the user's input 
                 audio2 = r.listen(source2)
                 
@@ -233,7 +247,7 @@ def translate():
                 #SpeakText(MyText) For audio to text
                 
                 
-                response = model.generate_content([f"Looking at the following content; {list1} the user says: {MyText}, return only 1 word, the one they are most interested in, do not provide explanations, your response must be 1 WORD"])
+                response = co.chat(message=f"Looking at the following content; {list1} (don't say stuff twice, but just say 2 people) the user says: {MyText}, return only 1 word, the one they are most interested in, do not provide explanations, your response must be 1 WORD")
                 print(response.text)
 
                 filename = record_audio()  # Record 10 seconds of audio
@@ -243,9 +257,23 @@ def translate():
                 try:
                     text = r.recognize_google(audio)
                     print("Recognized text:", text)
-                    args = {"native": response.text, "foreign": list2[list1.index(response.text)], "transcript": text , "lang_from": "English", "lang_to":foreign}
+                    # with cohere chat, give english word translate to foreign lang
+                    lang = co.chat(message=f"Translate the word {response.text} to {foreign}, only return the translation of the word, nothing else")
+                    args = {"native": response.text, "foreign": lang.text, "transcript": text, "lang_from": "English", "lang_to":foreign}
                     
                     client.mutation('memories:insert', args=args)
+
+                    # Got it. Added to the flashcards
+                    PlayFile("flashcards.mp3")
+
+                    # cohere briefly explain word
+                    dialogue=co.chat(message=f"You're in the middle of a conversation trying to explain a word to the user. Do not greet the user. Very briefly explain translation from {foreign} to english part of the word. Don't ask them questions", model="command")
+                    print(dialogue.text)
+                    SpeakText(dialogue.text)
+                    PlayFile('output.mp3')
+
+                    return redirect(url_for('decision1', repeat = "yes"))
+                    break
                 except sr.UnknownValueError:
                     print("Could not understand audio.")
                 except sr.RequestError as e:
@@ -260,18 +288,8 @@ def translate():
         except sr.UnknownValueError:
             print("unknown error occurred")
 
-    return result
+    return jsonify({"response": response.text})
 
-
-
-@app.route('/voice', methods = ['GET'])
-def voiceRec():
-    #Example Querry: how do you 
-
-
-
-
-    return
 
 
 def SpeakText(command):
@@ -283,7 +301,7 @@ def PlayFile(path):
     playsound(path)
     print("Playing file: ", path)
 
-def record_audio(duration=10, fs=44100, filename="output.wav"):
+def record_audio(duration=15, fs=44100, filename="output.wav"):
     print("Recording...")
     recording = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
     sd.wait()  # Wait for the recording to finish
@@ -292,5 +310,16 @@ def record_audio(duration=10, fs=44100, filename="output.wav"):
     return filename
 
 
+
 if __name__ == "__main__":
   app.run(debug=True)
+
+# docs = client.query("memories:get")
+# query = "recall clocks in japanese"
+# print(docs)
+# # from docs create a sentence
+
+# query = query.replace("recall", "")
+# results = co.rerank(model="rerank-multilingual-v3.0",rank_fields=['foreign', 'lang_from', 'native', 'lang_to', 'transcript'], query=query, documents=docs, top_n=3, return_documents=True)
+# most_relevant = results.results[0]
+# print(most_relevant.document._creationTime)
