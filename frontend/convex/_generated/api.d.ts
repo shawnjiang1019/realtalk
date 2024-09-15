@@ -17,6 +17,7 @@ import type {
 } from "convex/server";
 import type * as decks from "../decks.js";
 import type * as flashcards from "../flashcards.js";
+import type * as memories from "../memories.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -29,6 +30,7 @@ import type * as flashcards from "../flashcards.js";
 declare const fullApi: ApiFromModules<{
   decks: typeof decks;
   flashcards: typeof flashcards;
+  memories: typeof memories;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

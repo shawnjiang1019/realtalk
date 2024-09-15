@@ -13,11 +13,13 @@ export default defineSchema({
 		context: v.string(),
 		lang_from: v.string(),
 		lang_to: v.string(),
-	}),
+	}),	
 
 	memories: defineTable({
 		native: v.string(),
 		foreign: v.string(),
 		transcript: v.string(),
+		lang_from: v.string(),
+		lang_to: v.string(),
 	}),
 });
