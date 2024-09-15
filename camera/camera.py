@@ -14,6 +14,11 @@ from dotenv import load_dotenv
 import os
 import google.generativeai as genai
 
+import time
+import sounddevice as sd
+import numpy as np
+from scipy.io.wavfile import write
+
 load_dotenv()
 secret_key = os.getenv('OPENAI')
 openAIclient = OpenAI(api_key=secret_key)
@@ -136,7 +141,7 @@ def camera():
         print(rmdp1)
         print(rmdp2)
 
-        translation = {'English': list1, 'Spanish': list2}
+        
         #print(client.query("desk:get"))
 
         #ADD TO DATABASE
@@ -145,7 +150,7 @@ def camera():
         #     "document": translation
         # })
         
-        return redirect(location=url_for('translate', lang1 = str(list1), lang2 = str(list2)))
+        return redirect(location=url_for('translate', lang1 = str(list1), lang2 = str(list2), foreign=language))
 
     
 
@@ -199,6 +204,7 @@ def retrieve(prompt):
 
 @app.route('/translate')
 def translate():
+    foreign = request.args.get("foreign")
     list1 = request.args.get('lang1')
     list2 = request.args.get('lang2')
 
@@ -211,7 +217,11 @@ def translate():
             with sr.Microphone() as source2:
                 
                 r.adjust_for_ambient_noise(source2, duration=0.1)
+                model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+                dialogue= model.generate_content([f"Behave as a voice assistant that is in the middle of a conversation. Do not greet the user, and using the following python list {list1} generate a response that will list the items briefly and prompt the user to select one"]) 
                 
+                SpeakText(dialogue.text)
+                PlayFile('C:/Users/shawn/Documents/realtalk/camera/output.mp3')
                 #listens for the user's input 
                 audio2 = r.listen(source2)
                 
@@ -221,14 +231,29 @@ def translate():
     
                 print("Did you say ",MyText)
                 #SpeakText(MyText) For audio to text
-                model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-                dialogue= model.generate_content([f"Behave as a voice assistant that is in the middle of a conversation. Do not greet the user, and using the following python list {list1} generate a response that will list the items briefly and prompt the user to select one"]) 
                 
-                SpeakText(dialogue.text)
-                PlayFile('output.mp3')
                 
-                response = model.generate_content([f"Looking at the following content; {list1} the user says: {MyText}, return 1 word, the one they are most interested in"])
+                response = model.generate_content([f"Looking at the following content; {list1} the user says: {MyText}, return only 1 word, the one they are most interested in, do not provide explanations, your response must be 1 WORD"])
                 print(response.text)
+
+                filename = record_audio()  # Record 10 seconds of audio
+                r = sr.Recognizer()
+                with sr.AudioFile(filename) as source:
+                    audio = r.record(source)
+                try:
+                    text = r.recognize_google(audio)
+                    print("Recognized text:", text)
+                    args = {"native": response.text, "foreign": list2[list1.index(response.text)], "transcript": text , "lang_from": "English", "lang_to":foreign}
+                    
+                    client.mutation('memories:insert', args=args)
+                except sr.UnknownValueError:
+                    print("Could not understand audio.")
+                except sr.RequestError as e:
+                    print(f"Error with the recognition service: {e}")
+
+
+
+                
         except sr.RequestError as e:
             print("Could not request results; {0}".format(e))
             
@@ -257,6 +282,14 @@ def SpeakText(command):
 def PlayFile(path):
     playsound(path)
     print("Playing file: ", path)
+
+def record_audio(duration=10, fs=44100, filename="output.wav"):
+    print("Recording...")
+    recording = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
+    sd.wait()  # Wait for the recording to finish
+    write(filename, fs, recording)
+    print(f"Recording complete. Saved to {filename}")
+    return filename
 
 
 if __name__ == "__main__":
