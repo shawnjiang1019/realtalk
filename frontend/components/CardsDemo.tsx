@@ -6,7 +6,7 @@ export function AppleCardsCarouselDemo() {
 	const cards = data.map((card, index) => <Card key={card.src} card={card} index={index} />);
 
 	return (
-		<div className="w-full">
+		<div className="w-full px-10">
 			<h2 className="max-w-7xl pl-4 mx-auto text-xl md:text-5xl font-bold text-foreground font-sans">Get to know RealTalk.</h2>
 			<Carousel items={cards} />
 		</div>
