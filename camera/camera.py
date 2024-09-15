@@ -86,8 +86,7 @@ def camera():
         language = language.replace(" ", "")
 
         # Open the camera
-        cap = cv2.VideoCapture(1)
-        cap = cv2.VideoCapture(1)
+        cap = cv2.VideoCapture(0)
 
         if not cap.isOpened():
             return jsonify({"error": "Could not open camera."}), 500
@@ -164,7 +163,28 @@ def getStuff():
 @app.route('/retrieve', methods= ['GET', "POST"])
 
 def retrieve(prompt):
-    query = prompt
+    r = sr.Recognizer() 
+    while(1):    
+        try:
+            with sr.Microphone() as source2:
+                
+                r.adjust_for_ambient_noise(source2, duration=0.1)
+                
+                audio2 = r.listen(source2)
+                
+                # Using google to recognize audio
+                MyText = r.recognize_google(audio2)
+                MyText = MyText.lower()
+                if 'Help me recall' in MyText: 
+                    docs = client.query("memories:get")
+                    query = MyText
+                    results = co.rerank(model="rerank-multilingual-v3.0", query=query, documents=docs, top_n=3, return_documents=True)
+                    
+        except:
+            pass
+
+
+    
     cards = client.query("flashcards:get")
 
     results = co.rerank(model="rerank-multilingual-v3.0", query=query, documents=cards, rank_fields=['answer','question'],top_n=5, return_documents=True)
@@ -201,19 +221,14 @@ def translate():
     
                 print("Did you say ",MyText)
                 #SpeakText(MyText) For audio to text
+                model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+                dialogue= model.generate_content([f"Behave as a voice assistant that is in the middle of a conversation. Do not greet the user, and using the following python list {list1} generate a response that will list the items briefly and prompt the user to select one"]) 
                 
-                if MyText in list1:
-                    object1 = list1[list1.index(MyText)]
-                    object2 = list2[list2.index(MyText)]
-
-                    result = {
-                        'native': 'English',
-                        'original': object1,
-                        'translated': object2,
-                        'foreign': 'Spanish',
-                        'context': ''
-                    }
-                    break
+                SpeakText(dialogue.text)
+                PlayFile('output.mp3')
+                
+                response = model.generate_content([f"Looking at the following content; {list1} the user says: {MyText}, return 1 word, the one they are most interested in"])
+                print(response.text)
         except sr.RequestError as e:
             print("Could not request results; {0}".format(e))
             
@@ -246,5 +261,3 @@ def PlayFile(path):
 
 if __name__ == "__main__":
   app.run(debug=True)
-
-
