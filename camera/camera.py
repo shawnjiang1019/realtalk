@@ -1,54 +1,92 @@
+from playsound import playsound
 import cv2
-import torch
+
 import speech_recognition as sr
-import pyttsx3 
-from flask import Flask, render_template, request, flash, redirect, url_for, session, jsonify, Response
-from io import BytesIO
-import base64
-#import convex
+
+from openai import OpenAI
+from PIL import Image
+from PIL import PngImagePlugin
+from flask import Flask, request, redirect, url_for, jsonify
+from convex import ConvexClient
 from PIL import Image as im 
-
-import google.generativeai as genai
+import cohere
+from dotenv import load_dotenv
 import os
-import subprocess
+import google.generativeai as genai
 
-genai.configure(api_key="AIzaSyA6PgnXOvsx0lK2RpuWkdoyah-Xp6R61z8")
+load_dotenv()
+secret_key = os.getenv('OPENAI')
+openAIclient = OpenAI(api_key=secret_key)
 
+genai.configure(api_key=os.getenv('GENAI'))
+co = cohere.Client(api_key=os.getenv('COHERE'))
+client = ConvexClient(os.getenv('CONVEX'))
 
 app = Flask(__name__)
-r = sr.Recognizer() 
-
-
-
 
 # Open a connection to the webcam
 
 #have script running on a different endpoint, once the keyword is spoken redirt to the camera end point
 #as a post request and return labels
-def generate_frames():
-    camera = cv2.VideoCapture(1)
-    while True:
-        success, frame = camera.read()  # Capture frame-by-frame
-        if not success:
-            break
-        else:
-            # Encode the frame in JPEG format
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
 
-            # Yield the frame in a HTTP response
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+@app.route('/decision1', methods=['GET', 'POST'])
 
-@app.route('/video_feed')
-def video_feed():
-    """Video streaming route. Put this in the src attribute of an img tag"""
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+def action():
+    r = sr.Recognizer() 
+    while(1):    
+        try:
+            with sr.Microphone() as source2:
+                
+                r.adjust_for_ambient_noise(source2, duration=0.1)
+                
+                audio2 = r.listen(source2)
+                
+                # Using google to recognize audio
+                MyText = r.recognize_google(audio2)
+                MyText = MyText.lower()
+    
+                print("Did you say ",MyText)
+                #SpeakText(MyText) For audio to text
+                if 'hey real talk' in MyText:
+                    PlayFile("greeting.mp3")
+                    
+                    r.adjust_for_ambient_noise(source2, duration=0.1)
+                    audio2 = r.listen(source2)
+
+                    MyText = r.recognize_google(audio2)
+                    MyText = MyText.lower()
+                    if 'translate' in MyText:
+                        print('We are in the if statement')
+                        model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+                        prompt1 = "Give me a 'yes' or 'no' response as to whether or not the text wants to translate something. GIVE ME ONLY A YES OR NO RESPONSE"
+                    
+                        response1 = model.generate_content([prompt1, MyText])
+                        print(response1.text)
+                        if 'y' in response1.text.lower():
+                            PlayFile("translate.mp3")
+                            prompt2 = "Give me the two letter iso code for the language to translate to only return 2 characters that are the iso code, NOTHING ELSE, NO MARKDOWN"
+                            response2 = model.generate_content([prompt2, MyText])
+                            return redirect(url_for('camera', response2=response2.text))
+                    
+        except sr.RequestError as e:
+            print("Could not request results; {0}".format(e))
+            
+        except sr.UnknownValueError:
+            print("unknown error occurred")
+
+    
+
 
 @app.route('/camera', methods=['GET', 'POST'])
 def camera():
     if request.method == 'GET':
+        language = request.args.get('response2')    
+        language = language.replace("%0A", "")
+        language = language.replace("\n", "")
+        language = language.replace(" ", "")
+
         # Open the camera
+        cap = cv2.VideoCapture(1)
         cap = cv2.VideoCapture(1)
 
         if not cap.isOpened():
@@ -63,13 +101,10 @@ def camera():
 
         # Release the camera
         cap.release()
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = im.fromarray(frame_rgb) 
-
-        buffer = BytesIO()
-        img.save(buffer, format="JPEG")
-        img_bytes = buffer.getvalue()
-        img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+        # use np arrays instead
+        # img_array = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(frame)
+        # img = frame.
 
         # Generate content using the model
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
@@ -79,10 +114,15 @@ def camera():
         # response = model.generate_content([prompt, img])
         # print(response.text)
                 # prompt = """ Classify the objects in the photo into an english list and a spanish list in following JSON format.
+        # prompt = "Classify the objects that are in this photo into a list in english and in spanish, return a JSON object"
+        # response = model.generate_content([prompt, img])
+        # print(response.text)
+                # prompt = """ Classify the objects in the photo into an english list and a spanish list in following JSON format.
 
         # Translation_Objects = {'english': list[str], 'spanish': list[str]}
         # """
         prompt1 = """Classify the objects in the photo into a list seperated by ','"""
+        prompt2 = """Classify the objects in the photo in spanish into a list seperated by ',' and remove duplicates."""
         prompt2 = """Classify the objects in the photo in spanish into a list seperated by ',' and remove duplicates."""
         response1 = model.generate_content([prompt1, img])
         response2 = model.generate_content([prompt2, img])
@@ -92,15 +132,60 @@ def camera():
         rmdp2 = list(dict.fromkeys(list2))
         print(rmdp1)
         print(rmdp2)
+        rmdp1 = list(dict.fromkeys(list1))
+        rmdp2 = list(dict.fromkeys(list2))
+        print(rmdp1)
+        print(rmdp2)
 
-        translation = {'English': rmdp1, 'Spanish': rmdp2}
+        translation = {'English': list1, 'Spanish': list2}
+        #print(client.query("desk:get"))
 
-        # return response.text
-        return render_template('camera.html', classification=translation, image=img_base64)
+        #ADD TO DATABASE
+        # response = client.query("insert_into_table", {
+        #     "table_name": "flashcards",  # replace with your table name
+        #     "document": translation
+        # })
+        
+        return redirect(location=url_for('translate', lang1 = str(list1), lang2 = str(list2)))
 
-@app.route('/translate/<list1>/<list2>/<object>')
-def translate(list1, list2):
+    
 
+@app.route('/do', methods=['GET', 'POST'])
+def getStuff():
+    if request.method == 'GET':
+        print("this works")
+        thing = client.query("flashcards:get")
+        print(thing)
+        return thing
+    else:
+        print('POST REQUEST')
+
+
+@app.route('/retrieve', methods= ['GET', "POST"])
+
+def retrieve(prompt):
+    query = prompt
+    cards = client.query("flashcards:get")
+
+    results = co.rerank(model="rerank-multilingual-v3.0", query=query, documents=cards, rank_fields=['answer','question'],top_n=5, return_documents=True)
+
+
+
+    
+    pass
+
+
+
+
+@app.route('/translate')
+def translate():
+    list1 = request.args.get('lang1')
+    list2 = request.args.get('lang2')
+
+    print(list1)
+    print(list2)
+    
+    r = sr.Recognizer() 
     while(1):    
         try:
             with sr.Microphone() as source2:
@@ -149,14 +234,17 @@ def voiceRec():
     return
 
 
-def SpeakText(command, speed=150, voice="samantha"):
-    voices = ['fred', 'junior', 'kathy', 'ralph', 'samantha']
-    # Initialize the engine
-    # engine = pyttsx3.init(driverName='espeak')
+def SpeakText(command):
+    response = openAIclient.audio.speech.create(model="tts-1", voice="alloy", input=command)
+    response.stream_to_file("output.mp3")
+    # play the file in the background
+    
+def PlayFile(path):
+    playsound(path)
+    print("Playing file: ", path)
 
-    # engine.say(command)
-    # engine.runAndWait()
-    subprocess.run(['say', '-v', voice, '-r', str(speed), command])
 
 if __name__ == "__main__":
   app.run(debug=True)
+
+
