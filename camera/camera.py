@@ -167,7 +167,7 @@ def getStuff():
 
 @app.route('/retrieve', methods= ['GET', "POST"])
 
-def retrieve(prompt):
+def retrieve():
     r = sr.Recognizer() 
     while(1):    
         try:
@@ -180,10 +180,16 @@ def retrieve(prompt):
                 # Using google to recognize audio
                 MyText = r.recognize_google(audio2)
                 MyText = MyText.lower()
-                if 'Help me recall' in MyText: 
+                if 'help me recall' in MyText: 
                     docs = client.query("memories:get")
+                    docs = docs['foreign']
                     query = MyText
+                    print(query)
                     results = co.rerank(model="rerank-multilingual-v3.0", query=query, documents=docs, top_n=3, return_documents=True)
+                    print('printing results')
+                    print(results)
+                    
+                    break
                     
         except:
             pass
@@ -192,7 +198,7 @@ def retrieve(prompt):
     
     cards = client.query("flashcards:get")
 
-    results = co.rerank(model="rerank-multilingual-v3.0", query=query, documents=cards, rank_fields=['answer','question'],top_n=5, return_documents=True)
+    results = co.rerank(model="embed-multilingual-light-v3.0", query=query, documents=cards, rank_fields=['answer','question'],top_n=5, return_documents=True)
 
 
 
@@ -244,8 +250,14 @@ def translate():
                     text = r.recognize_google(audio)
                     print("Recognized text:", text)
                     args = {"native": response.text, "foreign": list2[list1.index(response.text)], "transcript": text , "lang_from": "English", "lang_to":foreign}
-                    
+                    client.query('memories:get')
                     client.mutation('memories:insert', args=args)
+                    SpeakText(list2[list1.index(response.text)])
+
+                    co.chat(model='')
+
+
+                    break
                 except sr.UnknownValueError:
                     print("Could not understand audio.")
                 except sr.RequestError as e:
@@ -278,6 +290,10 @@ def SpeakText(command):
     response = openAIclient.audio.speech.create(model="tts-1", voice="alloy", input=command)
     response.stream_to_file("output.mp3")
     # play the file in the background
+
+def SpeakOriginal(command):
+    response = openAIclient.audio.speech.create(model="tts-1", voice="alloy", input=command)
+    response.stream_to_file("original.mp3")    
     
 def PlayFile(path):
     playsound(path)
