@@ -296,6 +296,10 @@ def SpeakText(command):
     response = openAIclient.audio.speech.create(model="tts-1", voice="alloy", input=command)
     response.stream_to_file("output.mp3")
     # play the file in the background
+
+def SpeakOriginal(command):
+    response = openAIclient.audio.speech.create(model="tts-1", voice="alloy", input=command)
+    response.stream_to_file("original.mp3")    
     
 def PlayFile(path):
     playsound(path)
