@@ -66,7 +66,7 @@ const Review = ({ params }: { params: { id: string } }) => {
 		};
 	}, [controlRef, currentCardFlipRef]);
 
-	if (loading) {
+	if (loading) {	
 		return <div>Loading...</div>;
 	}
 

@@ -42,20 +42,6 @@ const Home = () => {
     console.log(container);
   };
 
-  // Calculate particle density based on scroll position
-  const calculateDensity = () => {
-    // Example calculation based on scroll position
-    const scrollY = window.scrollY || 0;
-    const windowHeight = window.innerHeight || 1;
-    const maxDensity = 500; // Maximum density at the top
-    const minDensity = 100; // Minimum density at the bottom
-    const density = Math.max(
-      minDensity,
-      maxDensity - (scrollY / windowHeight) * (maxDensity - minDensity)
-    );
-    return density;
-  };
-
   const options: ISourceOptions = useMemo(
     () => ({
       fpsLimit: 120,
@@ -104,7 +90,7 @@ const Home = () => {
         number: {
           density: {
             enable: true,
-            value: calculateDensity(), // Dynamically calculate density
+            value: 300,
           },
           value: 500,
         },
@@ -120,7 +106,6 @@ const Home = () => {
       },
       detectRetina: true,
     }),
-    [calculateDensity]
   );
 
   return (
