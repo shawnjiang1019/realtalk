@@ -9,7 +9,7 @@ export const get = query({
 });
 
 export const getByDeckId = query({
-	args: { deck_id: v.id('deck') },
+	args: { deck_id: v.id('decks') },
 	handler: async (ctx, args) => {
 		const flashcards = await ctx.db
 			.query('flashcards')

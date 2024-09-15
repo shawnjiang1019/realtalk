@@ -5,7 +5,7 @@ import Link from 'next/link';
 import React from 'react';
 
 const Review = () => {
-	const decks = useQuery(api.deck.get);
+	const decks = useQuery(api.decks.get);
 	console.log(decks);
 
 	return (

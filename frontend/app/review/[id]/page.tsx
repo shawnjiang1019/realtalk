@@ -11,8 +11,8 @@ import { Button } from '@/components/ui/button';
 
 const Review = ({ params }: { params: { id: string } }) => {
 	const { id } = params;
-	const flashcards = useQuery(api.flashcards.getByDeckId, { deck_id: id as Id<'deck'> });
-	const deck = useQuery(api.deck.getById, { id: id as Id<'deck'> });
+	const flashcards = useQuery(api.flashcards.getByDeckId, { deck_id: id as Id<'decks'> });
+	const deck = useQuery(api.decks.getById, { id: id as Id<'decks'> });
 	console.log(deck);
 	console.log(flashcards);
 	// const [flashcards, setFlashcards] = useState(null);
